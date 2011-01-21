@@ -1,0 +1,36 @@
+HISTORY HACKDAY PROJECT, JAN 22-23rd 2011
+
+TIME AND PLACE
+
+Many wikipedia articles have geographic coordinates attached. Many deal with historic events. If we can find the subset of articles that have both we can create a dynamic visualization of Wikipedia's view of world history. With any luck we'll be able to see migrations, wars, the discovery of continents as the result of plotting many tiny data points. 
+
+This idea is obviously inspired by the Facebook World Map (http://www.facebook.com/notes/facebook-engineering/visualizing-friendships/469716398919). However, ours would be animated, building up the picture gradually. For example, there probably won't be many articles in the
+Americas until 1492, but after that, you should see the shape of America emerging as a collection of dots, each representing some historical event that someone thought was worthy of a Wikipedia article. 
+
+
+GENERAL APPROACH
+Step 1:
+Go through XML dumps of Wikipedia articles. For each article, if it's a year (e.g. http://en.wikipedia.org/wiki/1982), extract the 'Events' section for later processing. If it's an article which references coordinates, process it to extract the coordinates and other desired metadata. 
+
+So, we'll end up with two sets of data: 
+* a list of events, each of which is a date and a sentence that references wikipedia articles. 
+* a list of location-linked article data. 
+
+Step 2: 
+Go through all events. Look up the articles referenced by each. If they exist in our set of location-linked articles (and we may choose to apply other criteria to eliminate noise), we can imply a time-place link.
+
+Step 3: 
+* visualize the set of time-place links. 
+
+
+VISUALIZATION IDEAS
+
+* Dots should appear brightly and fade, but leave a mark to distinguish new from old events in the same space.
+
+
+ANALYSIS IDEAS
+
+* Visualization of national/geographic biases in the way Wikipedia represents history. There may be certain nations very sparsely represented. Some analysis of this could be interesting.
+
+* We might be able to process data for foreign language versions of wikipedia too. Then it would be a simple matter to plot e.g. French versus German views of world history on the same map and see if biases emerge.
+

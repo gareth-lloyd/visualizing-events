@@ -54,27 +54,40 @@ class Event(object):
         Extract links from the line
         """
         self.year = year
-        parts = linkPattern.findall(line)
+        self.month = None
+        self.day = None
+        parts = self.linkPattern.findall(line)
         if parts:
             self.year = year
             self.successful = True
             if self.tryToParseDate(parts[0]) and len(parts) > 1:
                 self.links = parts[1:]
-
         else:
             self.successful = False
 
     def tryToParseDate(self, text):
-        pass
+        segments = text.split()
+        self.month = self.parseMonth(segments[0])
+        if segments[1]:
+            try:
+                self.day = int(segments[1])
+            except:
+                pass
+    def parseMonth(self, text):
+        
 
 def saveEvent(event):
-    pass
+    global EVENTS_SAVED
+    EVENTS_SAVED += 1
+    return
 
 def processAndSaveEvents(page):
     """
     Take a wikipedia representing a year and extract
     the events recorded there. Save each to the datastore.
     """
+    global YEARS_PROCESSED
+    YEARS_PROCESSED += 1
     year = titleToYear(page.title)
     if not year:
         return
@@ -88,33 +101,30 @@ def processAndSaveEvents(page):
     # process from here line by line
     for line in eventsOnwards.split():
         if line.startswith('='):
-            if shouldContinueAfterSubtitle(line):
-                continue
+            if (line.find("Births") != -1 or line.find("Deaths") != -1):
+                print line
+                break
         if line.startswith('*'):
             saveEvent(Event(line, year))
 
 def titleToYear(title):
     try:
-        return title.atoi()
+        return int(title)
     except:
         try:
             # year is BC
             endIndex = title.find(' ')
-            return -1 * (title[0:endIndex].atoi())
+            return -1 * int(title[0:endIndex])
         except:
             return False
-
-def shouldContinueAfterSubtitle(line):
-    if (line.find("Births") != -1 or line.find("Deaths") != -1):
-        return False
-    return True
 
 def savePage(page):
     """
     Take a Wikipedia page and add it to the
     Pages collection
     """
-    pass
+    global COORD_PAGES
+    COORD_PAGES += 1
 
 class text_normalize_filter(XMLFilterBase):
     """
@@ -178,7 +188,7 @@ class WikipediaHandler(handler.ContentHandler):
         elif (self.currentTag == 'title'):
             self.currentPage.title = content
         elif self.currentTag == 'text':
-            self.currentPage.text += content
+            self.currentPage.text = content
 
     def analysePage(self):
         if (self.currentPage.isYear()):

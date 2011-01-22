@@ -34,3 +34,10 @@ ANALYSIS IDEAS
 
 * We might be able to process data for foreign language versions of wikipedia too. Then it would be a simple matter to plot e.g. French versus German views of world history on the same map and see if biases emerge.
 
+DATA MODEL
+
+Each page referenced by a date will be represented something like the following:
+
+{"latitude": 10.213, "longitude": 170.213, "year": 1983, "month": 11, "day": 21, "category": ["Countries", "Places"], "article_length": 123, "title": "United Kingdom"}
+
+

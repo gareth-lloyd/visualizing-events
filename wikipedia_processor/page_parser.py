@@ -5,20 +5,103 @@ from xml.sax import handler, make_parser
 from xml.sax.handler import feature_namespaces
 from xml.sax.saxutils import escape, XMLFilterBase
 from unicodedata import normalize
+import pymongo
+from pymongo import Connection
 import re
 
+## globals
 YEARS_PROCESSED = 0
 COORD_PAGES = 0
 EVENTS_SAVED = 0
+COORD_ERRORS = 0
+
+connection = Connection()
+db = connection.time_place
+eventCollection = db.events
+eventCollection.ensure_index("year", direction=pymongo.ASCENDING)
+pageCollection = db.pages
 
 
 class Coords(object):
-    def __init__(self, lat=None, long=None):
-        self.lat = lat
-        self.long = long
+    PROCESSING_LAT = 0
+    PROCESSING_LONG = 1
+    DONE = 2
+
+    DEG = 4
+    MIN = 5
+    SEC = 6
+
+    """
+    class to hold coord data and help with parsing
+    by allowing
+    """
+    def __init__(self):
+        self.state = Coords.PROCESSING_LAT
+        self.granularity = Coords.DEG
+        self.lat = 0.0
+        self.long = 0.0
+        self.addedData = False
+
+    def addPiece(self, piece):
+        if (self.state == Coords.DONE):
+            return
+        if (piece.find('.') != -1):
+            # we're dealing with a floating point measurement
+            if (self.state == Coords.PROCESSING_LAT):
+                self.lat = float(piece)
+                self.addedData = True
+                self.state = Coords.PROCESSING_LONG
+            elif (self.state == Coords.PROCESSING_LONG):
+                self.long = float(piece)
+                self.state = Coords.DONE
+        elif (not piece.isdigit()):
+            if (piece == 'N' or piece == 'S'):
+                # get ready for latitude
+                self.state = Coords.PROCESSING_LONG
+                self.granularity = Coords.DEG
+                if (piece == 'S'):
+                    self.lat *= -1
+                return
+            elif (piece == 'E' or piece == 'W'):
+                if (piece == 'W'):
+                    self.long *= -1
+                self.state = Coords.DONE
+                return
+        else:
+            if (self.state == Coords.PROCESSING_LAT):
+                self.addedData = True
+                self.lat += self.processPieceAtCorrectGranularity(piece)
+            elif (self.state == Coords.PROCESSING_LONG):
+                self.long += self.processPieceAtCorrectGranularity(piece)
+
+    def hasData(self):
+        return self.addedData
+
+    def processPieceAtCorrectGranularity(self, piece):
+        intPiece = int(piece)
+        if self.granularity == Coords.DEG:
+            self.granularity = Coords.MIN
+            return intPiece
+        elif self.granularity == Coords.MIN:
+            self.granularity = Coords.SEC
+            return intPiece * 0.0166666
+        elif self.granularity == Coords.SEC:
+            self.granularity = Coords.DEG
+            return intPiece * 0.00166666
+
+    def __str__(self):
+        return "%f|%f" % (self.lat, self.long)
+    def __unicode__(self):
+        return "%f|%f" % (self.lat, self.long)
 
 class WikipediaPage(object):
+    """
+    holds data and methods related to one <page> element
+    parsed from the dump
+    """
     isYearPattern = re.compile(r"^\d{1,4}( BC)?$")
+    coordsPattern = re.compile(r"\{\{[Cc]oord\|(.*?)\}\}")
+
     def __init__(self):
         self.title = u''
         self.id = u''
@@ -30,7 +113,28 @@ class WikipediaPage(object):
         Try to skip early if it's not relevant (e.g. it's a redirect)
         otherwise detect all Coordinates and return True if some found
         """
+        coordStrings = self.coordsPattern.findall(self.text)
+        if coordStrings:
+            for s in coordStrings:
+                coord = self.coordFromStr(s)
+                if (coord and coord.hasData()):
+                    self.coords.append(coord)
+                else:
+                    print "invalid coord %s" % s
+        if (self.coords):
+            return True
         return False
+
+    def coordFromStr(self, coordStr):
+        c = Coords()
+        for piece in coordStr.split('|'):
+            try:
+                c.addPiece(piece)
+            except:
+                global COORD_ERRORS
+                COORD_ERRORS += 1
+                print "COORD ERROR: str: %s piece: %s" % (coordStr, piece)
+        return c
 
     def isYear(self):
         """
@@ -54,32 +158,12 @@ class Event(object):
         Extract links from the line
         """
         self.year = year
-        self.month = None
-        self.day = None
-        parts = self.linkPattern.findall(line)
-        if parts:
-            self.year = year
-            self.successful = True
-            if self.tryToParseDate(parts[0]) and len(parts) > 1:
-                self.links = parts[1:]
+        self.eventText = line
+        self.links = self.linkPattern.findall(line)
+        if self.links:
+            self.isValidEvent = True
         else:
-            self.successful = False
-
-    def tryToParseDate(self, text):
-        segments = text.split()
-        self.month = self.parseMonth(segments[0])
-        if segments[1]:
-            try:
-                self.day = int(segments[1])
-            except:
-                pass
-    def parseMonth(self, text):
-        
-
-def saveEvent(event):
-    global EVENTS_SAVED
-    EVENTS_SAVED += 1
-    return
+            self.isValidEvent = False
 
 def processAndSaveEvents(page):
     """
@@ -99,12 +183,11 @@ def processAndSaveEvents(page):
     eventsOnwards = page.text[startIndex:]
 
     # process from here line by line
-    for line in eventsOnwards.split():
+    for line in eventsOnwards.splitlines():
         if line.startswith('='):
             if (line.find("Births") != -1 or line.find("Deaths") != -1):
-                print line
                 break
-        if line.startswith('*'):
+        elif line.startswith('*'):
             saveEvent(Event(line, year))
 
 def titleToYear(title):
@@ -118,13 +201,7 @@ def titleToYear(title):
         except:
             return False
 
-def savePage(page):
-    """
-    Take a Wikipedia page and add it to the
-    Pages collection
-    """
-    global COORD_PAGES
-    COORD_PAGES += 1
+
 
 class text_normalize_filter(XMLFilterBase):
     """
@@ -196,6 +273,35 @@ class WikipediaHandler(handler.ContentHandler):
         elif (self.currentPage.processForCoords()):
             savePage(self.currentPage)
 
+def savePage(page):
+    """
+    Take a Wikipedia page and add it to the
+    Pages collection
+    """
+    global COORD_PAGES
+    COORD_PAGES += 1
+
+    coords = page.coords[0]
+    pageDict = {
+        "latitude": coords.lat,
+        "longitude": coords.long,
+        "article_length": len(page.text),
+        "_id": page.title
+    }
+    global pageCollection
+    pageCollection.insert(pageDict)
+
+def saveEvent(event):
+    if not event.isValidEvent:
+        return
+    global EVENTS_SAVED
+    EVENTS_SAVED += 1
+    global eventCollection
+    eventDict = {
+        "year": event.year,
+        "links": event.links
+    }
+    eventCollection.insert(eventDict)
 
 if __name__ == '__main__':
     parser = make_parser()
@@ -211,3 +317,4 @@ if __name__ == '__main__':
     print "coord pages saved: %d" % COORD_PAGES
     print "year pages processed: %d" % YEARS_PROCESSED
     print "events saved: %d" % EVENTS_SAVED
+    print "coord errors: %d" % COORD_ERRORS

@@ -21,9 +21,12 @@ public class YearRenderer implements FrameRenderer<Integer> {
     public void renderNextFrame(Integer year) {
         Graphics2D g2 = currentFrame.createGraphics();
         
+        
+        // Following block renders zero alpha to whole image
         g2.setComposite(AlphaComposite.Clear);
         g2.fillRect(0, 0, currentFrame.getWidth(), currentFrame.getHeight());
         g2.dispose();
+        
         g2 = currentFrame.createGraphics();
         
         g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.2f));

@@ -8,4 +8,6 @@ public interface GeoEventPageProvider {
     public List<GeoEventPage> getNextFrame();
     
     public boolean hasMoreEvents();
+    
+    public int getCurrentYear();
 }

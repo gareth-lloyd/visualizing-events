@@ -7,5 +7,4 @@ public interface FrameRenderer<T> {
     public abstract BufferedImage getCurrentFrame();
 
     public abstract void renderNextFrame(T data);
-
 }

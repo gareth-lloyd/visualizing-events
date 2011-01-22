@@ -15,6 +15,8 @@ public class JsonInputGEPProvider implements GeoEventPageProvider {
     String currentLine = "";
     String nextLine = null;
     private BufferedReader reader;
+    
+    int currentYear = -1;
 
     public JsonInputGEPProvider(String filename) {
         try {
@@ -44,6 +46,21 @@ public class JsonInputGEPProvider implements GeoEventPageProvider {
         GeoEventPage nextGeoEventPage = new Gson().fromJson(nextLine, GeoEventPage.class);
         GeoEventPage initialGeoEventPage = nextGeoEventPage;
         
+        int year;
+        if(initialGeoEventPage != null) {
+            year = initialGeoEventPage.getYear();
+        } else {
+            return pages;
+        }
+        
+        // Return empty year
+        if(year - currentYear > 1) {
+            currentYear ++;
+            return pages;
+        } else {
+            currentYear = year;
+        }
+        
         // Stop when we run out or change years
         while(nextGeoEventPage != null && initialGeoEventPage.getYear() == nextGeoEventPage.getYear()) {
             pages.add(nextGeoEventPage);
@@ -69,6 +86,11 @@ public class JsonInputGEPProvider implements GeoEventPageProvider {
             }
         }
         return b;
+    }
+
+    @Override
+    public int getCurrentYear() {
+        return currentYear;
     }
 
 }

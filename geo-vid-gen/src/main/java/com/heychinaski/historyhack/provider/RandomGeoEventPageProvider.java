@@ -43,6 +43,11 @@ public class RandomGeoEventPageProvider implements GeoEventPageProvider {
     @Override
     public List<GeoEventPage> getNextFrame() {
         List<GeoEventPage> list = new ArrayList<GeoEventPage>();
+        
+        if(Math.random() <= 0.9) {
+            currentCycle ++;
+            return list;
+        }
 
         for(int j = 0; j < 5; j++) {
             Point2D.Double newPoint;
@@ -92,6 +97,11 @@ public class RandomGeoEventPageProvider implements GeoEventPageProvider {
         }catch (Exception e){//Catch exception if any
             System.err.println("Error: " + e.getMessage());
         }
+    }
+
+    @Override
+    public int getCurrentYear() {
+        return currentCycle;
     }
 
 }

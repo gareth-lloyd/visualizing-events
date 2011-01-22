@@ -7,18 +7,23 @@ from xml.sax.saxutils import escape, XMLFilterBase
 from unicodedata import normalize
 import re
 
+YEARS_PROCESSED = 0
+COORD_PAGES = 0
+EVENTS_SAVED = 0
+
+
 class Coords(object):
     def __init__(self, lat=None, long=None):
         self.lat = lat
         self.long = long
 
 class WikipediaPage(object):
+    isYearPattern = re.compile(r"^\d{1,4}( BC)?$")
     def __init__(self):
         self.title = u''
         self.id = u''
         self.text = u''
         self.coords = []
-        self.isYearPattern = re.compile(r"^\d{1,4}( BC)?$")
 
     def processForCoords(self):
         """
@@ -39,11 +44,70 @@ class WikipediaPage(object):
     def __unicode__(self):
         return 'ID %s TITLE %s' % (self.id, self.title)
 
+class Event(object):
+    linkPattern = re.compile(r"\[\[(.*?)\]\]")
+    """
+    A single event line from a year page
+    """
+    def __init__(self, line, year):
+        """
+        Extract links from the line
+        """
+        self.year = year
+        parts = linkPattern.findall(line)
+        if parts:
+            self.year = year
+            self.successful = True
+            if self.tryToParseDate(parts[0]) and len(parts) > 1:
+                self.links = parts[1:]
+
+        else:
+            self.successful = False
+
+    def tryToParseDate(self, text):
+        pass
+
+def saveEvent(event):
+    pass
+
 def processAndSaveEvents(page):
     """
-    Add
+    Take a wikipedia representing a year and extract
+    the events recorded there. Save each to the datastore.
     """
-    print page.title
+    year = titleToYear(page.title)
+    if not year:
+        return
+
+    # Grab just the events section onwards
+    startIndex = page.text.find('Events')
+    if (startIndex == -1):
+        return
+    eventsOnwards = page.text[startIndex:]
+
+    # process from here line by line
+    for line in eventsOnwards.split():
+        if line.startswith('='):
+            if shouldContinueAfterSubtitle(line):
+                continue
+        if line.startswith('*'):
+            saveEvent(Event(line, year))
+
+def titleToYear(title):
+    try:
+        return title.atoi()
+    except:
+        try:
+            # year is BC
+            endIndex = title.find(' ')
+            return -1 * (title[0:endIndex].atoi())
+        except:
+            return False
+
+def shouldContinueAfterSubtitle(line):
+    if (line.find("Births") != -1 or line.find("Deaths") != -1):
+        return False
+    return True
 
 def savePage(page):
     """
@@ -133,3 +197,7 @@ if __name__ == '__main__':
     # apply the text_normalize_filter
     filter_handler = text_normalize_filter(parser, wh)
     filter_handler.parse(open(sys.argv[1]))
+
+    print "coord pages saved: %d" % COORD_PAGES
+    print "year pages processed: %d" % YEARS_PROCESSED
+    print "events saved: %d" % EVENTS_SAVED

@@ -11,8 +11,7 @@
       <unpack>true</unpack>
       <scope>runtime</scope>
       <includes>
-<!--        <include>commons-lang:commons-lang</include>
-        <include>commons-cli:commons-cli</include>-->
+        <include>com.google.code.gson:gson</include>
       </includes>
     </dependencySet>
   </dependencySets>

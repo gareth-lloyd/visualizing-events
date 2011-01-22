@@ -101,9 +101,9 @@ class WikipediaHandler(handler.ContentHandler):
             self.currentPage.text += content
 
     def analysePage(self):
-        if (containsCoords(self.currentPage.text)):
+        if (self.currentPage.containsCoords()):
             processPage(self.currentPage)
-        if (isYear(self.currentPage.text)):
+        if (self.currentPage.isYear()):
             processYear(self.currentPage)
 
 if __name__ == '__main__':

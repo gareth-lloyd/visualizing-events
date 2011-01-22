@@ -5,6 +5,7 @@ from xml.sax import handler, make_parser
 from xml.sax.handler import feature_namespaces
 from xml.sax.saxutils import escape, XMLFilterBase
 from unicodedata import normalize
+import re
 
 class Coords(object):
     def __init__(self, lat=None, long=None):
@@ -17,18 +18,41 @@ class WikipediaPage(object):
         self.id = u''
         self.text = u''
         self.coords = []
+        self.isYearPattern = re.compile(r"^\d{1,4}(_BC)?$")
 
-    def containsCoords(self):
+    def processForCoords(self):
+        """
+        Try to skip early if it's not relevant (e.g. it's a redirect)
+        otherwise detect all Coordinates and return True if some found
+        """
         return False
 
     def isYear(self):
-        return False
+        """
+        Is this a year page?
+        """
+        return self.isYearPattern.match(self.title)
 
     def __str__(self):
         return 'ID %s TITLE %s' % (self.id.encode('utf_8'), self.title.encode('utf_8'))
 
-    def __unicode(self):
+    def __unicode__(self):
         return 'ID %s TITLE %s' % (self.id, self.title)
+
+
+def processAndSaveEvents(page):
+    """
+    Take a Wikipedia page and add it to the
+    Pages collection
+    """
+    print page.title
+
+def savePage(page):
+    """
+    Take a Wikipedia page and add it to the
+    Pages collection
+    """
+    pass
 
 class text_normalize_filter(XMLFilterBase):
     """
@@ -60,12 +84,6 @@ def _wrap_complete(method_name):
     setattr(text_normalize_filter, method_name, method)
 for n in '''startElement endElement endDocument'''.split():
     _wrap_complete(n)
-
-def processYear(text):
-    pass
-
-def processPage(text):
-    pass
 
 class WikipediaHandler(handler.ContentHandler):
     def __init__(self, out=sys.stdout):
@@ -101,10 +119,11 @@ class WikipediaHandler(handler.ContentHandler):
             self.currentPage.text += content
 
     def analysePage(self):
-        if (self.currentPage.containsCoords()):
-            processPage(self.currentPage)
         if (self.currentPage.isYear()):
-            processYear(self.currentPage)
+            processAndSaveEvents(self.currentPage)
+        elif (self.currentPage.processForCoords()):
+            savePage(self.currentPage)
+
 
 if __name__ == '__main__':
     parser = make_parser()

@@ -18,7 +18,7 @@ class WikipediaPage(object):
         self.id = u''
         self.text = u''
         self.coords = []
-        self.isYearPattern = re.compile(r"^\d{1,4}(_BC)?$")
+        self.isYearPattern = re.compile(r"^\d{1,4}( BC)?$")
 
     def processForCoords(self):
         """
@@ -39,11 +39,9 @@ class WikipediaPage(object):
     def __unicode__(self):
         return 'ID %s TITLE %s' % (self.id, self.title)
 
-
 def processAndSaveEvents(page):
     """
-    Take a Wikipedia page and add it to the
-    Pages collection
+    Add
     """
     print page.title
 

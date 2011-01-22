@@ -48,9 +48,17 @@ public class CumulativeGeoFrameRenderer implements FrameRenderer<List<GeoEventPa
     public void renderNextFrame(List<GeoEventPage> pages) {
         g2d.setColor(Color.WHITE);
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.1f));
+        
         for(GeoEventPage page : pages) {
-            g2d.fillOval((int)(page.getLongitude() * RESOLUTION_FACTOR), (int)(page.getLatitude() * RESOLUTION_FACTOR), 1000, 1000);
+
+            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.005f));            
+            for(int i = RESOLUTION_FACTOR * 5; i >= RESOLUTION_FACTOR; i -= RESOLUTION_FACTOR) {
+                g2d.fillOval((int)(page.getLongitude() * RESOLUTION_FACTOR) - i, (int)(page.getLatitude() * RESOLUTION_FACTOR) - i, 2 * i, 2 * i);
+            }
+            
+            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.1f));
+            g2d.fillOval((int)(page.getLongitude() * RESOLUTION_FACTOR) - (RESOLUTION_FACTOR / 2), (int)(page.getLatitude() * RESOLUTION_FACTOR) - (RESOLUTION_FACTOR / 2), (RESOLUTION_FACTOR), (RESOLUTION_FACTOR / 2));
+                
         }
         
     }

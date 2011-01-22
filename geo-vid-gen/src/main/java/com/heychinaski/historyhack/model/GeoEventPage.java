@@ -9,6 +9,8 @@ public class GeoEventPage {
     int day;
     
     int articleLength;
+    
+    public GeoEventPage() {}
 
     public GeoEventPage(double longitude, double latitude, int year, int month, int day, int articleLength) {
         super();

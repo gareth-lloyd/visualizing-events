@@ -11,7 +11,7 @@ import javax.imageio.ImageIO;
 
 import com.heychinaski.historyhack.model.GeoEventPage;
 import com.heychinaski.historyhack.provider.GeoEventPageProvider;
-import com.heychinaski.historyhack.provider.RandomGeoEventPageProvider;
+import com.heychinaski.historyhack.provider.JsonInputGEPProvider;
 import com.heychinaski.historyhack.renderer.CompositeFrameRenderer;
 import com.heychinaski.historyhack.renderer.CumulativeGeoFrameRenderer;
 import com.heychinaski.historyhack.renderer.YearRenderer;
@@ -27,7 +27,8 @@ public class App {
     public static void main(String[] args) throws IOException {
         long time = System.currentTimeMillis();
         
-        GeoEventPageProvider provider = new RandomGeoEventPageProvider(-1000, 2000);
+//        GeoEventPageProvider provider = new RandomGeoEventPageProvider(-1000, 2000);
+        GeoEventPageProvider provider = new JsonInputGEPProvider("input.json");
         
         CumulativeGeoFrameRenderer renderer = new CumulativeGeoFrameRenderer(WIDTH, HEIGHT);
         YearRenderer yearRenderer = new YearRenderer(WIDTH, HEIGHT);

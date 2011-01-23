@@ -40,4 +40,19 @@ Each page referenced by a date will be represented something like the following:
 
 {"latitude": 10.213, "longitude": 170.213, "year": 1983, "month": 11, "day": 21, "category": ["Countries", "Places"], "article_length": 123, "title": "United Kingdom"}
 
+RENDERING THE VISUALIZATION
 
+Rendering the visualization is a two stage process.  First you need to use the Java app (geo-vid-gen) to generate the separate png files that make up the frames of the video, then you need to use encoding software such as mencoder to stitch the images into a video file.
+
+1) Make sure the config.properties file in src/main/resources are set properly with a inputLocation pointing to the json file with the events in it and the outputDirectory pointing to the required directory (this directory must exist). If the filenames are relative they must be relative to where you'll run the jar file from
+2) Build the project:
+  mvn assembly:assembly
+3) Run the jar file (and wait a long time):
+  java -jar target/geo-vid-gen-exe.jar
+4) Ensure mencoder is installed:
+  sudo apt-get install mencoder
+5) cd to the chosen output directory and run something like:
+  mencoder "mf://*.png" -mf w=1600:h=800:fps=25:type=png -ovc lavc -lavcopts vcodec=mpeg4 -oac copy -o output.mp4
+Which will produce an output.mp4 file in the current directory.  The above is essentially "magic". If you want different results then you'll need to look around for direction on mencoder (or other video encoding tools).  It should be fairly obvious how to change the frame rate and video size above though.
+  
+  

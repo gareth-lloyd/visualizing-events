@@ -14,6 +14,7 @@ YEARS_PROCESSED = 0
 COORD_PAGES = 0
 EVENTS_SAVED = 0
 COORD_ERRORS = 0
+MULTI_COORDS = 0
 
 connection = Connection()
 db = connection.time_place
@@ -40,20 +41,21 @@ class Coords(object):
         self.granularity = Coords.DEG
         self.lat = 0.0
         self.long = 0.0
-        self.addedData = False
+        self.addedLat = False
+        self.addedLong = False
 
     def addPiece(self, piece):
         if (self.state == Coords.DONE):
             return
         if (piece.find('.') != -1):
             # we're dealing with a floating point measurement
-            if (self.state == Coords.PROCESSING_LAT):
+            if (self.state == Coords.PROCESSING_LAT and not self.addedLat):
                 self.lat = float(piece)
-                self.addedData = True
+                self.addedLat = True
                 self.state = Coords.PROCESSING_LONG
-            elif (self.state == Coords.PROCESSING_LONG):
+            elif (self.state == Coords.PROCESSING_LONG and not self.addedLong):
                 self.long = float(piece)
-                self.state = Coords.DONE
+                self.addedLong = True
         elif (not piece.isdigit()):
             if (piece == 'N' or piece == 'S'):
                 # get ready for latitude
@@ -69,13 +71,14 @@ class Coords(object):
                 return
         else:
             if (self.state == Coords.PROCESSING_LAT):
-                self.addedData = True
                 self.lat += self.processPieceAtCorrectGranularity(piece)
+                self.addedLat = True
             elif (self.state == Coords.PROCESSING_LONG):
                 self.long += self.processPieceAtCorrectGranularity(piece)
+                self.addedLong = True
 
     def hasData(self):
-        return self.addedData
+        return self.addedLat and self.addedLong
 
     def processPieceAtCorrectGranularity(self, piece):
         intPiece = int(piece)
@@ -87,7 +90,7 @@ class Coords(object):
             return intPiece * 0.0166666
         elif self.granularity == Coords.SEC:
             self.granularity = Coords.DEG
-            return intPiece * 0.00166666
+            return intPiece * 0.000166666
 
     def __str__(self):
         return "%f|%f" % (self.lat, self.long)
@@ -269,9 +272,14 @@ class WikipediaHandler(handler.ContentHandler):
 
     def analysePage(self):
         if (self.currentPage.isYear()):
-            processAndSaveEvents(self.currentPage)
+            #processAndSaveEvents(self.currentPage)
+            pass
         elif (self.currentPage.processForCoords()):
-            savePage(self.currentPage)
+            if (len(self.currentPage.coords) > 1):
+                global MULTI_COORDS
+                MULTI_COORDS += 1
+            #savePage(self.currentPage)
+            pass
 
 def savePage(page):
     """
@@ -318,3 +326,4 @@ if __name__ == '__main__':
     print "year pages processed: %d" % YEARS_PROCESSED
     print "events saved: %d" % EVENTS_SAVED
     print "coord errors: %d" % COORD_ERRORS
+    print "multi coord: %d" % MULTI_COORDS

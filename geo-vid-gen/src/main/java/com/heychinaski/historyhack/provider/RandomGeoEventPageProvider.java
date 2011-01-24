@@ -7,6 +7,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import com.google.gson.Gson;
 import com.heychinaski.historyhack.model.GeoEventPage;
@@ -62,7 +63,7 @@ public class RandomGeoEventPageProvider implements GeoEventPageProvider {
                 newPoint.y += (Math.random() * distance) - (distance/2);
             }
 
-            GeoEventPage randomPage = new GeoEventPage(newPoint.x, newPoint.y, currentCycle, 0, 0, 0);
+            GeoEventPage randomPage = new GeoEventPage(newPoint.x, newPoint.y, currentCycle, 0, 0, 0, "");
             list.add(randomPage);
         }
 
@@ -102,6 +103,12 @@ public class RandomGeoEventPageProvider implements GeoEventPageProvider {
     @Override
     public int getCurrentYear() {
         return currentCycle;
+    }
+
+    @Override
+    public Map<Integer, List<GeoEventPage>> allPages() {
+        // TODO Auto-generated method stub
+        return null;
     }
 
 }

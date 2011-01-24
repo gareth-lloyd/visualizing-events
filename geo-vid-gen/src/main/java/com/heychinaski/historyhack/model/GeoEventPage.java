@@ -7,12 +7,12 @@ public class GeoEventPage {
     int year;
     int month;
     int day;
-    
+    String title;
     int articleLength;
     
     public GeoEventPage() {}
 
-    public GeoEventPage(double longitude, double latitude, int year, int month, int day, int articleLength) {
+    public GeoEventPage(double longitude, double latitude, int year, int month, int day, int articleLength, String title) {
         super();
         this.longitude = longitude;
         this.latitude = latitude;
@@ -20,6 +20,7 @@ public class GeoEventPage {
         this.month = month;
         this.day = day;
         this.articleLength = articleLength;
+        this.title = title;
     }
     
     public double getLongitude() {
@@ -44,5 +45,9 @@ public class GeoEventPage {
 
     public int getArticleLength() {
         return articleLength;
+    }
+    
+    public String getTitle() {
+        return title;
     }
 }

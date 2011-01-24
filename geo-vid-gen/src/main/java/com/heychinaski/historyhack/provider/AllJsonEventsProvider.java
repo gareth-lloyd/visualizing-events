@@ -12,7 +12,7 @@ import java.util.Map;
 import com.google.gson.Gson;
 import com.heychinaski.historyhack.model.GeoEventPage;
 
-public class JsonInputGEPProvider implements GeoEventPageProvider {
+public class AllJsonEventsProvider implements GeoEventPageProvider {
     
     String currentLine = "";
     String nextLine = null;
@@ -20,7 +20,7 @@ public class JsonInputGEPProvider implements GeoEventPageProvider {
     
     int currentYear = -1;
 
-    public JsonInputGEPProvider(String filename) {
+    public AllJsonEventsProvider(String filename) {
         try {
             File input = new File(filename);
             reader = new BufferedReader(new FileReader(input));
@@ -104,6 +104,15 @@ public class JsonInputGEPProvider implements GeoEventPageProvider {
         }
         System.out.println(allPages.size());
         System.out.println(allPages.get(1865).size());
+        return allPages;
+    }
+    
+    public List<GeoEventPage> getAllAsList() {
+        List<GeoEventPage> allPages = new ArrayList<GeoEventPage>();
+        while (this.hasMoreEvents()) {
+            List<GeoEventPage> pages = getNextFrame();
+            allPages.addAll(pages);
+        }
         return allPages;
     }
 

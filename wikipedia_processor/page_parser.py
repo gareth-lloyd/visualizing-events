@@ -22,7 +22,6 @@ eventCollection = db.events
 eventCollection.ensure_index("year", direction=pymongo.ASCENDING)
 pageCollection = db.pages
 
-
 class Coords(object):
     PROCESSING_LAT = 0
     PROCESSING_LONG = 1
@@ -272,13 +271,10 @@ class WikipediaHandler(handler.ContentHandler):
 
     def analysePage(self):
         if (self.currentPage.isYear()):
-            #processAndSaveEvents(self.currentPage)
+            processAndSaveEvents(self.currentPage)
             pass
         elif (self.currentPage.processForCoords()):
-            if (len(self.currentPage.coords) > 1):
-                global MULTI_COORDS
-                MULTI_COORDS += 1
-            #savePage(self.currentPage)
+            savePage(self.currentPage)
             pass
 
 def savePage(page):
@@ -326,4 +322,3 @@ if __name__ == '__main__':
     print "year pages processed: %d" % YEARS_PROCESSED
     print "events saved: %d" % EVENTS_SAVED
     print "coord errors: %d" % COORD_ERRORS
-    print "multi coord: %d" % MULTI_COORDS

@@ -14,7 +14,6 @@ import javax.imageio.ImageIO;
 
 import com.heychinaski.historyhack.experimental.GenerationalFrameRenderer;
 import com.heychinaski.historyhack.model.GeoEventPage;
-import com.heychinaski.historyhack.provider.AllJsonEventsProvider;
 import com.heychinaski.historyhack.provider.GeoEventPageProvider;
 import com.heychinaski.historyhack.provider.JsonInputGEPProvider;
 import com.heychinaski.historyhack.renderer.CompositeFrameRenderer;
@@ -25,7 +24,7 @@ import com.heychinaski.historyhack.renderer.YearRenderer;
  * 
  * 
  */
-public class App {
+public class GenerationalApp {
 
     public static void main(String[] args) throws IOException {
         Properties properties = new Properties();
@@ -47,25 +46,36 @@ public class App {
 
         long time = System.currentTimeMillis();
 
-        AllJsonEventsProvider englishProvider = new AllJsonEventsProvider(inputLocation);
-        AllJsonEventsProvider frenchProvider = new AllJsonEventsProvider("./fr-data.json");
-        
-        List<GeoEventPage> englishPages = englishProvider.getAllAsList();
-        List<GeoEventPage> frenchPages = frenchProvider.getAllAsList();
-        
-        TwoLangFrameRenderer twoLangRenderer = new TwoLangFrameRenderer(englishPages, frenchPages, width, height, Color.RED, Color.WHITE);
+        GeoEventPageProvider provider = new JsonInputGEPProvider(inputLocation);
+
+        Map<Integer, List<GeoEventPage>> allPages = provider.allPages();
+        GenerationalFrameRenderer renderer = new GenerationalFrameRenderer(allPages , width, height, Color.decode(foregroundHex), Color.decode(backgroundHex));
+        YearRenderer yearRenderer = new YearRenderer(width, height);
         CompositeFrameRenderer compositeFrameRenderer = new CompositeFrameRenderer(width, height);
-        
-        twoLangRenderer.renderNextFrame(null);
 
-        ArrayList<BufferedImage> overlays = new ArrayList<BufferedImage>();
-        BufferedImage englishImage = twoLangRenderer.getCurrentFrame();
-        overlays.add(englishImage);
-        compositeFrameRenderer.renderNextFrame(overlays);
+        int currentFrame = 0;
+        int currentYear = -499;
+        while(currentYear <= 2011) {
+            renderer.renderNextFrame(currentYear);
+            
+            System.out.println("Current year " + currentYear);
+            yearRenderer.renderNextFrame(currentYear);
 
-        RenderedImage image = compositeFrameRenderer.getCurrentFrame();
+            ArrayList<BufferedImage> overlays = new ArrayList<BufferedImage>();
+            BufferedImage geoImage = renderer.getCurrentFrame();
+            BufferedImage yearImage = yearRenderer.getCurrentFrame();
+            overlays.add(geoImage);
+            overlays.add(yearImage);
+            compositeFrameRenderer.renderNextFrame(overlays);
 
-        ImageIO.write(image, "png", new File(outputDirectory + "/frame" + "engFrench" + ".png"));
+            RenderedImage image = compositeFrameRenderer.getCurrentFrame();
+
+            String frameNumber = String.format("%05d", currentFrame);
+            ImageIO.write(image, "png", new File(outputDirectory + "/frame" + frameNumber + ".png"));
+
+            currentFrame++;
+            currentYear++;
+        }
 
         long finishTime = System.currentTimeMillis();
         System.out.println("Done");

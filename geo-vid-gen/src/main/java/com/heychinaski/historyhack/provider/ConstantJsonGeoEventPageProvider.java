@@ -12,15 +12,17 @@ import java.util.Map;
 import com.google.gson.Gson;
 import com.heychinaski.historyhack.model.GeoEventPage;
 
-public class JsonInputGEPProvider implements GeoEventPageProvider {
+public class ConstantJsonGeoEventPageProvider implements GeoEventPageProvider {
     
     String currentLine = "";
     String nextLine = null;
     private BufferedReader reader;
     
     int currentYear = -1;
+    private int numEvents;
 
-    public JsonInputGEPProvider(String filename) {
+    public ConstantJsonGeoEventPageProvider(String filename, int numEvents) {
+        this.numEvents = numEvents;
         try {
             File input = new File(filename);
             reader = new BufferedReader(new FileReader(input));
@@ -42,32 +44,17 @@ public class JsonInputGEPProvider implements GeoEventPageProvider {
     
     @Override
     public List<GeoEventPage> getNextFrame() {
-        
         List<GeoEventPage> pages = new ArrayList<GeoEventPage>();
         
         GeoEventPage nextGeoEventPage = new Gson().fromJson(nextLine, GeoEventPage.class);
         GeoEventPage initialGeoEventPage = nextGeoEventPage;
         
-        int year;
-        if(initialGeoEventPage != null) {
-            year = initialGeoEventPage.getYear();
-        } else {
-            // empty list of pages
+        if(initialGeoEventPage == null) {
             return pages;
         }
         
-        // The page that has come back has a year in advance of the
-        // anticipated current year. There was a gap in the data. 
-        // increment year and return empty list.
-        if(year - currentYear > 1) {
-            currentYear ++;
-            return pages;
-        } else {
-            currentYear = year;
-        }
-        
-        // Stop when we run out or change years
-        while(nextGeoEventPage != null && initialGeoEventPage.getYear() == nextGeoEventPage.getYear()) {
+        // Stop when we run out or reach numEvents
+        while(nextGeoEventPage != null && pages.size() < numEvents) {
             pages.add(nextGeoEventPage);
             
             readNextLine();
@@ -77,6 +64,7 @@ public class JsonInputGEPProvider implements GeoEventPageProvider {
                 nextGeoEventPage = null;
             }
         }
+        currentYear = pages.get(pages.size() - 1).getYear();
         return pages;
     }
 

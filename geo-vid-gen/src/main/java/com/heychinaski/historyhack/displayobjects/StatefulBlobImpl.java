@@ -32,7 +32,6 @@ public class StatefulBlobImpl implements StatefulBlob {
         this.currentState = 0;
     }
     
-    @Override
     public void draw(Graphics2D g2) {
         BlobState state = null;
         if (currentState >= DEFAULT_STATES.length) {
@@ -49,7 +48,6 @@ public class StatefulBlobImpl implements StatefulBlob {
         currentState++;
     }
     
-    @Override
     public boolean willDrawFinalState() {
         return currentState == DEFAULT_STATES.length;
     }

@@ -13,12 +13,10 @@ public class CompositeFrameRenderer implements FrameRenderer<List<BufferedImage>
         currentFrame = new BufferedImage(width, height, BufferedImage.TYPE_4BYTE_ABGR);
     }
 
-    @Override
     public BufferedImage getCurrentFrame() {
         return currentFrame;
     }
 
-    @Override
     public void renderNextFrame(List<BufferedImage> overlays) {
         Graphics2D g2 = currentFrame.createGraphics();
 

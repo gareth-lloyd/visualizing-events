@@ -54,12 +54,10 @@ public class TwoLangFrameRenderer implements FrameRenderer<Object> {
         currentG2d.translate((LONGITUDE_DEGREES_MULTIPLIED) / 2, (LATITUDE_DEGREES_MULTIPLIED) / 2);
     }
     
-    @Override
     public BufferedImage getCurrentFrame() {
         return currentFrame;
     }
 
-    @Override
     public void renderNextFrame(Object ignore) {
         boolean atLeastOneHasEvents = true;
         int index = 0;

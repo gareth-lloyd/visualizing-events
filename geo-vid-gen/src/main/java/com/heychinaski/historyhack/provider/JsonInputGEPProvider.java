@@ -14,11 +14,11 @@ import com.heychinaski.historyhack.model.GeoEventPage;
 
 public class JsonInputGEPProvider implements GeoEventPageProvider {
     
-    String currentLine = "";
-    String nextLine = null;
-    private BufferedReader reader;
+    protected String currentLine = "";
+    protected String nextLine = null;
+    protected BufferedReader reader;
     
-    int currentYear = -1;
+    protected int currentYear = -1;
 
     public JsonInputGEPProvider(String filename) {
         try {
@@ -32,7 +32,7 @@ public class JsonInputGEPProvider implements GeoEventPageProvider {
 
     }
 
-    private void readNextLine() {
+    protected void readNextLine() {
         try {
             nextLine = reader.readLine();
         } catch(Exception e) {
@@ -40,12 +40,16 @@ public class JsonInputGEPProvider implements GeoEventPageProvider {
         }
     }
     
+    protected GeoEventPage pageFromJson(String line) {
+        return new Gson().fromJson(nextLine, GeoEventPage.class); 
+    }
+    
     @Override
     public List<GeoEventPage> getNextFrame() {
         
         List<GeoEventPage> pages = new ArrayList<GeoEventPage>();
         
-        GeoEventPage nextGeoEventPage = new Gson().fromJson(nextLine, GeoEventPage.class);
+        GeoEventPage nextGeoEventPage = pageFromJson(nextLine);
         GeoEventPage initialGeoEventPage = nextGeoEventPage;
         
         int year;
@@ -57,8 +61,7 @@ public class JsonInputGEPProvider implements GeoEventPageProvider {
         }
         
         // The page that has come back has a year in advance of the
-        // anticipated current year. There was a gap in the data. 
-        // increment year and return empty list.
+        // anticipated next year: there was a gap in the data. 
         if(year - currentYear > 1) {
             currentYear ++;
             return pages;
@@ -72,7 +75,7 @@ public class JsonInputGEPProvider implements GeoEventPageProvider {
             
             readNextLine();
             if(nextLine != null) {
-                nextGeoEventPage = new Gson().fromJson(nextLine, GeoEventPage.class);
+                nextGeoEventPage = pageFromJson(nextLine);
             } else {
                 nextGeoEventPage = null;
             }

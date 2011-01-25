@@ -4,7 +4,7 @@ import java.awt.image.BufferedImage;
 
 public interface FrameRenderer<T> {
 
-    public abstract BufferedImage getCurrentFrame();
+    public BufferedImage getCurrentFrame();
 
-    public abstract void renderNextFrame(T data);
+    public void renderNextFrame(T data);
 }

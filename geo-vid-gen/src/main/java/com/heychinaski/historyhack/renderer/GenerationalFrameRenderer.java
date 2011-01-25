@@ -14,7 +14,6 @@ import java.util.List;
 
 import com.heychinaski.historyhack.displayobjects.StatefulBlob;
 import com.heychinaski.historyhack.displayobjects.StatefulBlobFactory;
-import com.heychinaski.historyhack.displayobjects.StatefulBlobImpl;
 import com.heychinaski.historyhack.model.GeoEventPage;
 
 public class GenerationalFrameRenderer implements FrameRenderer<List<GeoEventPage>> {
@@ -51,7 +50,7 @@ public class GenerationalFrameRenderer implements FrameRenderer<List<GeoEventPag
         blobsToRetire = Collections.emptyList();
         
         // initialize images
-        imageWithRetireesOnly = new BufferedImage(width, height, BufferedImage.TYPE_3BYTE_BGR);
+        imageWithRetireesOnly = new BufferedImage(width, height, BufferedImage.TYPE_4BYTE_ABGR);
         retireesImageG2d = imageWithRetireesOnly.createGraphics();
         retireesImageG2d.setColor(backgroundColor);
         retireesImageG2d.fillRect(0, 0, width, height);
@@ -60,13 +59,12 @@ public class GenerationalFrameRenderer implements FrameRenderer<List<GeoEventPag
         retireesImageG2d.translate((LONGITUDE_DEGREES_MULTIPLIED) / 2, (LATITUDE_DEGREES_MULTIPLIED) / 2);
     }
     
-    @Override
     public BufferedImage getCurrentFrame() {
         return currentFrame;
     }
 
+
     
-    @Override
     public void renderNextFrame(List<GeoEventPage> incomingEvents) {
         // draw only the retirees onto the stored image
         for (StatefulBlob blob : blobsToRetire) {

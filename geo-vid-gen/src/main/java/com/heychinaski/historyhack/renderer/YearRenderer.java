@@ -12,15 +12,12 @@ public class YearRenderer implements FrameRenderer<Integer> {
         currentFrame = new BufferedImage(width, height, BufferedImage.TYPE_4BYTE_ABGR);
     }
 
-    @Override
     public BufferedImage getCurrentFrame() {
         return currentFrame;
     }
 
-    @Override
     public void renderNextFrame(Integer year) {
         Graphics2D g2 = currentFrame.createGraphics();
-        
         
         // Following block renders zero alpha to whole image
         g2.setComposite(AlphaComposite.Clear);

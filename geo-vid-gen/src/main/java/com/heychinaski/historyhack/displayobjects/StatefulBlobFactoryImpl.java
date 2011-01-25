@@ -6,7 +6,6 @@ import com.heychinaski.historyhack.model.GeoEventPage;
 
 public class StatefulBlobFactoryImpl implements StatefulBlobFactory {
 
-    @Override
     public StatefulBlob createStatefulBlob(GeoEventPage page, Point point) {
         // TODO: add any necessary logic to analyze page contents
         // and decide what to render in response.

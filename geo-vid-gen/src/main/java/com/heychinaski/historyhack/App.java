@@ -1,7 +1,6 @@
 package com.heychinaski.historyhack;
 
 import java.awt.Color;
-import java.awt.Point;
 import java.awt.image.BufferedImage;
 import java.awt.image.RenderedImage;
 import java.io.File;
@@ -13,15 +12,12 @@ import java.util.Properties;
 
 import javax.imageio.ImageIO;
 
-import com.heychinaski.historyhack.displayobjects.StatefulBlob;
-import com.heychinaski.historyhack.displayobjects.StatefulBlobFactory;
 import com.heychinaski.historyhack.displayobjects.StatefulBlobFactoryImpl;
 import com.heychinaski.historyhack.model.GeoEventPage;
 import com.heychinaski.historyhack.provider.ConstantJsonGeoEventPageProvider;
 import com.heychinaski.historyhack.provider.GeoEventPageProvider;
-import com.heychinaski.historyhack.provider.JsonInputGEPProvider;
+import com.heychinaski.historyhack.renderer.BackDropFrameRenderer;
 import com.heychinaski.historyhack.renderer.CompositeFrameRenderer;
-import com.heychinaski.historyhack.renderer.CumulativeGeoFrameRenderer;
 import com.heychinaski.historyhack.renderer.FrameRenderer;
 import com.heychinaski.historyhack.renderer.GenerationalFrameRenderer;
 import com.heychinaski.historyhack.renderer.YearRenderer;
@@ -32,6 +28,7 @@ import com.heychinaski.historyhack.renderer.YearRenderer;
  */
 public class App {
 
+    static FrameRenderer<Object> backDropRenderer;
     static FrameRenderer<List<GeoEventPage>> eventRenderer;
     static FrameRenderer<Integer> yearRenderer;
     static FrameRenderer<List<BufferedImage>> compositeRenderer;
@@ -48,9 +45,12 @@ public class App {
         int frameSkip = Integer.parseInt(properties.getProperty("frameSkip", "" + 1));
         String backgroundHex = properties.getProperty("backgroundColor", "0x000000");
         String inputLocation = properties.getProperty("inputLocation", "./input.json");
+        String backDrop = properties.getProperty("backDrop", "./backdrop.png");
+        
         outputDirectory = properties.getProperty("outputDirectory", "./frames");
         long time = System.currentTimeMillis();
 
+        backDropRenderer = new BackDropFrameRenderer(width, height, backDrop);
         provider = new ConstantJsonGeoEventPageProvider(inputLocation, 10);
 
         eventRenderer = new GenerationalFrameRenderer(width, height, 
@@ -84,15 +84,13 @@ public class App {
     }
 
     private static void render(List<GeoEventPage> pages, int currentFrame) throws IOException {
-        if(pages.size() > 0) {
-            eventRenderer.renderNextFrame(pages);
-        }
-
+        eventRenderer.renderNextFrame(pages);
         int year = provider.getCurrentYear();
         System.out.println("Current year " + year);
         yearRenderer.renderNextFrame(year);
 
         ArrayList<BufferedImage> overlays = new ArrayList<BufferedImage>();
+        BufferedImage backDrop = backDropRenderer.getCurrentFrame();
         BufferedImage geoImage = eventRenderer.getCurrentFrame();
         BufferedImage yearImage = yearRenderer.getCurrentFrame();
         overlays.add(geoImage);

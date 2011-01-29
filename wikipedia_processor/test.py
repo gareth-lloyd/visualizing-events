@@ -89,6 +89,14 @@ class TestEvents(unittest.TestCase):
         self.assertEqual(24, e.day)
         self.assertEqual(["January 24", "God's Army (revolutionary group)", "Karen people", "Johnny and Luther Htoo", "Thailand", "Myanmar"], e.links)
 
+    def test_init_problematic(self):
+        e = Event("* [[February 2]] &ndash; The first issue of ''[[Human Events]]'' is published.", 2010)
+        self.assertEqual(2010, e.year)
+        self.assertEqual(2, e.month)
+        self.assertEqual(2, e.day)
+        self.assertEqual("February 2 &ndash; The first issue of ''Human Events'' is published.", e.eventText)
+
+
 class TestProcessYear(unittest.TestCase):
     def test_processYear_nestedEvents(self):
         events = """* [[January 18]]
@@ -101,7 +109,7 @@ class TestProcessYear(unittest.TestCase):
         for event in wp.events:
             self.assertEqual(1, event.month)
             self.assertEqual(18, event.day)
-            print event.eventText
+        self.assertEqual("Australia's worst railway disaster at Granville, near Sydney, leaves 83 people dead.", wp.events[2].eventText)
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,5 +1,6 @@
 """
-
+Works with page_parser to save two kinds of data to a mongo datastore:
+descriptions of events, and links to pages with coordinates
 """
 
 import sys
@@ -16,11 +17,11 @@ MULTI_COORDS = 0
 isYearPattern = re.compile(r"^\d{1,4}( BC)?$")
 coordsPattern = re.compile(r"\{\{[Cc]oord\|(.*?)\}\}")
 
-#connection = pymongo.Connection()
-#db = connection.time_place
-#eventCollection = db.events
-#eventCollection.ensure_index("year", direction=pymongo.ASCENDING)
-#pageCollection = db.pages
+connection = pymongo.Connection()
+db = connection.time_place
+eventCollection = db.events
+eventCollection.ensure_index("year", direction=pymongo.ASCENDING)
+pageCollection = db.pages
 
 class Coords(object):
     PROCESSING_LAT = 0
@@ -41,11 +42,13 @@ class Coords(object):
         self.addedLat = False
         self.addedLong = False
         for piece in coordStr.split('|'):
+            if self.state == Coords.DONE:
+                break
             self.addPiece(piece)
+        if not (self.addedLat and self.addedLong):
+            raise ValueError
 
     def addPiece(self, piece):
-        if (self.state == Coords.DONE):
-            return
         if (piece.find('.') != -1):
             # we're dealing with a floating point measurement
             if (self.state == Coords.PROCESSING_LAT and not self.addedLat):
@@ -76,9 +79,6 @@ class Coords(object):
                 self.long += self.processPieceAtCorrectGranularity(piece)
                 self.addedLong = True
 
-    def hasData(self):
-        return self.addedLat and self.addedLong
-
     def processPieceAtCorrectGranularity(self, piece):
         intPiece = int(piece)
         if self.granularity == Coords.DEG:
@@ -99,7 +99,7 @@ class Coords(object):
 class Event(object):
     linkDelimiters = re.compile(r"(\[\[|\]\]|\|)")
     months = {
-        "january" : 1, "Jan" : 1, "jan" : 1, "January" : 1,
+        "january" : 1, "jan" : 1, "January" : 1,
         "february" : 2, "Feb" : 2, "feb" : 2, "February" : 2,
         "march" : 3, "Mar" : 3, "mar" : 3, "March" : 3,
         "april" : 4, "Apr" : 4, "apr" : 4, "April" : 4,
@@ -173,7 +173,10 @@ def saveEvents(page):
         global eventCollection
         eventCollection.insert({
             "year": event.year,
-            "links": event.links
+            "links": event.links,
+            "month" : event.month,
+            "day" : event.day,
+            "event_text" : event.eventText
         })
 
 def processYear(page):
@@ -181,6 +184,7 @@ def processYear(page):
     Take a WikiPage representing a year and try to parse out individual events
     recorded there. Add these to a list on the page object.
     """
+    errors = 0
     page.events = []
     try:
         year = int(page.title)
@@ -195,19 +199,26 @@ def processYear(page):
     # Grab just the events section onwards
     startIndex = page.text.find('Events')
     startIndex = startIndex if startIndex != -1 else 0
-    lastEventSaved = None
+    lastEvent = None
     for line in page.text[startIndex:].splitlines():
-        if line.startswith('='):
+        if len(line) < 4:
+            pass    # skip empty lines
+        elif line.startswith('='):
             if (line.find("Births") != -1 or line.find("Deaths") != -1):
                 break
-        elif line.startswith('**') and lastEventSaved is not None:
-            page.events.append(Event(line, year, lastEventSaved.month, lastEventSaved.day))
-        else:
+        elif line.startswith('**') and lastEvent is not None:
+            newEvent = Event(line, year, lastEvent.month, lastEvent.day)
+            page.events.append(newEvent)
+        elif line.startswith('*'):
             try:
-                lastEventSaved = Event(line, year)
-                page.events.append(lastEventSaved)
+                lastEvent = Event(line, year)
+                page.events.append(lastEvent)
             except ValueError:
-                pass # not fatal
+                print "ERROR: %s" % line
+                errors += 1 # not fatal
+        else:
+            print "error: ", line
+    return errors
 
 def processPageForCoords(page):
     page.coords = []
@@ -225,11 +236,11 @@ def processPage(page):
     if isYearPattern.match(page.title):
         processYear(page)
         if page.events:
-            pass#saveEvents(page)
+            saveEvents(page)
     else:
         processPageForCoords(page)
         if page.coords:
-            pass#savePage(page)
+            savePage(page)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import unittest
+import timeit
 from events_processor import Coords, Event, processYear
 from page_parser import WikiPage
 
@@ -63,6 +64,68 @@ class TestCoords(unittest.TestCase):
         self.assertAlmostEqual(-35.55533333, c.lat, places=5)
         self.assertAlmostEqual(138.8746666666, c.long, places=5)
 
+    def test_init_unexpected_format1(self):
+        c = Coords("60|-134|type:landmark_region:CA-BC|display=title")
+        self.assertAlmostEqual(60, c.lat, places=5)
+        self.assertAlmostEqual(-134, c.long, places=5)
+
+    def test_init_unexpected_format2(self):
+        c = Coords("51|3.3|display=title")
+        self.assertAlmostEqual(51, c.lat, places=5)
+        self.assertAlmostEqual(3.3, c.long, places=5)
+
+    def test_init_unexpected_format3(self):
+        c = Coords("46|0|0|53|0|0||display=inline,title")
+        self.assertAlmostEqual(46, c.lat, places=5)
+        self.assertAlmostEqual(53, c.long, places=5)
+
+    def test_init_unexpected_format4(self):
+        c = Coords("31|35|type:country|display=title")
+        self.assertAlmostEqual(31, c.lat, places=5)
+        self.assertAlmostEqual(35, c.long, places=5)
+
+    def test_init_unexpected_format5(self):
+        c = Coords("13 |40 |00 |N|102 |60 |60 |E|region:KH_type:city|display=inline")
+        self.assertAlmostEqual(13.666666666, c.lat, places=5)
+        self.assertAlmostEqual(103.01000000, c.long, places=5)
+
+    def test_init_unexpected_format6(self):
+        c = Coords("41|53|37|12|29|16.5|source:dewiki_type:landmark_dim:20_region:IT-RM|display=title")
+        self.assertAlmostEqual(41.889499647, c.lat, places=5)
+        self.assertAlmostEqual(12.486083314, c.long, places=5)
+
+    def test_init_unexpected_format7(self):
+        c = Coords("name=South Wellington No. 10|49.088722|N|123.893037|W|region:CA_type:landmark|display=inline")
+        self.assertAlmostEqual(49.088722, c.lat, places=5)
+        self.assertAlmostEqual(-123.893037, c.long, places=5)
+
+    def test_init_unexpected_format8(self):
+        c = Coords(" 59 | 10 |N| 5 | 10 |E|display=title")
+        self.assertAlmostEqual(59.1666666, c.lat, places=5)
+        self.assertAlmostEqual(5.1666666, c.long, places=5)
+
+    def test_init_unexpected_format9(self):
+        c = Coords("-90|0|region:AQ_scale:10000000|display=title")
+        self.assertAlmostEqual(-90, c.lat, places=5)
+        self.assertAlmostEqual(0, c.long, places=5)
+
+    def test_init_unexpected_format10(self):
+        c = Coords("0|+93.5|display=inline,title")
+        self.assertAlmostEqual(0, c.lat, places=5)
+        self.assertAlmostEqual(93.5, c.long, places=5)
+
+    def test_init_unexpected_format11(self):
+        c = Coords("41|53|37|N|12|29|E|source:dewiki_type:landmark_dim:20_region:IT-RM|display=title")
+        self.assertAlmostEqual(41.889499647, c.lat, places=5)
+        self.assertAlmostEqual(12.4833333, c.long, places=5)
+
+    def test_no_numeric(self):
+        self.assertRaises(ValueError, Coords, "LAT|LONG|source:dewiki_type:landmark_dim:20_region:IT-RM|display=title")
+
+    def test_uneven_number_pieces(self):
+        self.assertRaises(ValueError, Coords, "54|34|65|source:dewiki_type:landmark_dim:20_region:IT-RM|display=title")
+
+
 class TestEvents(unittest.TestCase):
     def test_init_standard(self):
         e = Event("* [[January 6]] &ndash; The last natural [[pyrenean ibex]] is found dead apparently killed by a falling tree.", 2010)
@@ -96,6 +159,17 @@ class TestEvents(unittest.TestCase):
         self.assertEqual(2, e.day)
         self.assertEqual("February 2 &ndash; The first issue of ''Human Events'' is published.", e.eventText)
 
+    def test_ref_ignored(self):
+        e = Event("* [[November 19]] &ndash; WWII: Australian cruiser [[HMAS Sydney (1934)|HMAS ''Sydney'']] sinks following a battle off the coast of Western Australia.<ref>{{cite book | author=Muggenthaler, August Karl| title=German Raiders of WWII| publisher=Prentice-Hall| year=1977| ISBN=0-13-354027-8| pages=186–191}}</ref>", 2010)
+        self.assertEqual(11, e.month)
+        self.assertEqual(19, e.day)
+        self.assertEqual("November 19 &ndash; WWII: Australian cruiser HMAS ''Sydney'' sinks following a battle off the coast of Western Australia.", e.eventText)
+
+    def test_month_only(self):
+        e = Event("* [[October]] &ndash; [[Pope Alexander VIII]] succeeds [[Pope Innocent XI]] as the 241st [[pope]].", 2010)
+        self.assertEqual(2010, e.year)
+        self.assertEqual(10, e.month)
+        self.assertEqual(None, e.day)
 
 class TestProcessYear(unittest.TestCase):
     def test_processYear_nestedEvents(self):

@@ -2,94 +2,72 @@
 Works with page_parser to save two kinds of data to a mongo datastore:
 descriptions of events, and links to pages with coordinates
 """
-
 import sys
 import pymongo
 import re
 import page_parser
 
 YEARS_PROCESSED = 0
-COORD_PAGES = 0
-EVENTS_SAVED = 0
-COORD_ERRORS = 0
-MULTI_COORDS = 0
-
 isYearPattern = re.compile(r"^\d{1,4}( BC)?$")
 coordsPattern = re.compile(r"\{\{[Cc]oord\|(.*?)\}\}")
 
-connection = pymongo.Connection()
-db = connection.time_place
-eventCollection = db.events
-eventCollection.ensure_index("year", direction=pymongo.ASCENDING)
-pageCollection = db.pages
+dataSource = None
 
 class Coords(object):
-    PROCESSING_LAT = 0
-    PROCESSING_LONG = 1
-    DONE = 2
-    DEG = 4
-    MIN = 5
-    SEC = 6
     """
-    class to hold coord data and help with parsing
-    by allowing
+    class to parse and hold coord data
     """
+    delim = re.compile(r"\s*\|\s*")
+    valid = re.compile(r"^[0-9\.\-+NSEW]+$")
+    granularities = [1, 0.0166666, 0.000166666]
+    points = {"N": 1, "S": -1, "E": 1, "W": -1}
+
     def __init__(self, coordStr):
-        self.state = Coords.PROCESSING_LAT
-        self.granularity = Coords.DEG
-        self.lat = 0.0
-        self.long = 0.0
-        self.addedLat = False
-        self.addedLong = False
-        for piece in coordStr.split('|'):
-            if self.state == Coords.DONE:
-                break
-            self.addPiece(piece)
-        if not (self.addedLat and self.addedLong):
-            raise ValueError
+        coordStr = coordStr.strip()
+        pieces = [x for x in Coords.delim.split(coordStr) if Coords.valid.match(x)]
+        if not pieces:
+            raise ValueError()
 
-    def addPiece(self, piece):
-        if (piece.find('.') != -1):
-            # we're dealing with a floating point measurement
-            if (self.state == Coords.PROCESSING_LAT and not self.addedLat):
-                self.lat = float(piece)
-                self.addedLat = True
-                self.state = Coords.PROCESSING_LONG
-            elif (self.state == Coords.PROCESSING_LONG and not self.addedLong):
-                self.long = float(piece)
-                self.addedLong = True
-        elif (not piece.isdigit()):
-            if (piece == 'N' or piece == 'S'):
-                # get ready for latitude
-                self.state = Coords.PROCESSING_LONG
-                self.granularity = Coords.DEG
-                if (piece == 'S'):
-                    self.lat *= -1
-                return
-            elif (piece == 'E' or piece == 'W'):
-                if (piece == 'W'):
-                    self.long *= -1
-                self.state = Coords.DONE
-                return
+        numPieces = len(pieces)
+        if numPieces % 2 != 0:
+            pieces = self._padPieces(pieces, numPieces)
+            numPieces = len(pieces)
+
+        gran, self.lat = 0, 0
+        for piece in pieces[:(numPieces / 2)]:
+            self.lat = self._process(self.lat, piece, gran)
+            gran += 1
+
+        gran, self.long = 0, 0
+        for i, piece in enumerate(pieces[(numPieces/2):]):
+            self.long = self._process(self.long, piece, i)
+
+    def _process(self, input, piece, gran):
+        if Coords.points.has_key(piece):
+            input *= Coords.points[piece]
+        elif piece.find('.') != -1:
+            input += float(piece) * Coords.granularities[gran]
         else:
-            if (self.state == Coords.PROCESSING_LAT):
-                self.lat += self.processPieceAtCorrectGranularity(piece)
-                self.addedLat = True
-            elif (self.state == Coords.PROCESSING_LONG):
-                self.long += self.processPieceAtCorrectGranularity(piece)
-                self.addedLong = True
+            input += int(piece) * Coords.granularities[gran]
+        return input
 
-    def processPieceAtCorrectGranularity(self, piece):
-        intPiece = int(piece)
-        if self.granularity == Coords.DEG:
-            self.granularity = Coords.MIN
-            return intPiece
-        elif self.granularity == Coords.MIN:
-            self.granularity = Coords.SEC
-            return intPiece * 0.0166666
-        elif self.granularity == Coords.SEC:
-            self.granularity = Coords.DEG
-            return intPiece * 0.000166666
+    def _padPieces(self, pieces, numPieces):
+        divider = 0
+        for piece in pieces:
+            if not Coords.points.has_key(piece):
+                divider += 1
+            else:
+                break
+        if divider == numPieces:
+            raise ValueError()
+        latPieces = pieces[:divider + 1]
+        longPieces = pieces[divider + 1:]
+        while len(latPieces) < 4:
+            latPieces.insert(-1, "0")
+        while len(longPieces) < 4:
+            longPieces.insert(-1, "0")
+        latPieces.extend(longPieces)
+        return latPieces
 
     def __str__(self):
         return "%f|%f" % (self.lat, self.long)
@@ -97,7 +75,7 @@ class Coords(object):
         return "%f|%f" % (self.lat, self.long)
 
 class Event(object):
-    linkDelimiters = re.compile(r"(\[\[|\]\]|\|)")
+    linkDelimiters = re.compile(r"(\[\[|\]\]|\||<ref|/ref>|<!--|-->)")
     months = {
         "january" : 1, "jan" : 1, "January" : 1,
         "february" : 2, "Feb" : 2, "feb" : 2, "February" : 2,
@@ -113,7 +91,7 @@ class Event(object):
         "december" : 12, "Dec" : 12, "dec" : 12, "December" : 12,
     }
     # states for link processing
-    TEXT, ALT_TEXT, LINK = (0, 1, 2)
+    TEXT, ALT_TEXT, LINK, IGNORE = (0, 1, 2, 3)
 
     # stored date for events in nested bullet form
     storedMonth = None
@@ -129,10 +107,13 @@ class Event(object):
         for piece in pieces:
             if piece == '[[':
                 state = Event.LINK
-            elif piece == ']]':
+            elif piece == ']]' or piece == "/ref>" or piece == "-->":
                 state = Event.TEXT
             elif piece == '|':
-                state = Event.ALT_TEXT
+                if state == Event.LINK:
+                    state = Event.ALT_TEXT
+            elif piece == "<ref" or piece == "<!--":
+                state = Event.IGNORE
             elif state == Event.LINK:
                 self.links.append(piece)
                 eventTextPieces.append(piece)
@@ -148,36 +129,70 @@ class Event(object):
         self.eventText = ''.join(eventTextPieces)
         if self.links and self.month is None:
             parts = self.links[0].split()
-            if Event.months.has_key(parts[0]) and len(parts) == 2:
-                try:
-                    self.day = int(parts[1])
-                    self.month = Event.months[parts[0]]
-                except ValueError:
-                    pass
+            if Event.months.has_key(parts[0]):
+                self.month = Event.months[parts[0]]
+                if len(parts) == 2:
+                    try:
+                        self.day = int(parts[1])
+                    except ValueError:
+                        pass
+    def __str__(self):
+        return "%d %s" % (self.year, self.eventText)
+    def __unicode__(self):
+        return "%d %s" % (self.year, self.eventText)
 
-def savePage(page):
-    global COORD_PAGES
-    COORD_PAGES += 1
-    global pageCollection
-    pageCollection.insert({
-        "latitude": page.coords[0].lat,
-        "longitude": page.coords[0].long,
-        "article_length": len(page.text),
-        "_id": page.title
-    })
+class DataSource(object):
+    INVALID_COORD_PAGES
+    COORD_PAGES
+    EVENTS_SAVED
 
-def saveEvents(page):
-    global EVENTS_SAVED
-    for event in page.events:
-        EVENTS_SAVED += 1
-        global eventCollection
-        eventCollection.insert({
-            "year": event.year,
-            "links": event.links,
-            "month" : event.month,
-            "day" : event.day,
-            "event_text" : event.eventText
-        })
+    def __init__(self, mock=False):
+        self.mock = mock
+        if not mock:
+            connection = pymongo.Connection()
+            db = connection.time_place
+            self.eventCollection = db.events
+            self.eventCollection.ensure_index("year", direction=pymongo.ASCENDING)
+            self.pageCollection = db.pages
+            self.invalidCoordCollection = db.invalid_coords
+
+    def saveInvalidCoordPage(self, page, coordStr):
+        DataSource.INVALID_COORD_PAGES += 1
+        if self.mock:
+            print page
+        else:
+            self.invalidCoordCollection.save({
+                "_id" : page.title,
+                "coord_string" : s
+            })
+
+    def savePage(self, page):
+        DataSource.COORD_PAGES += 1
+        if self.mock:
+            print page
+        else:
+            coords = []
+            for coord in page.coords:
+                coords.append({"latitude": coord.lat, "longitude": coord.long})
+            self.pageCollection.save({
+                "coords": coords,
+                "article_length": len(page.text),
+                "_id": page.title
+            })
+
+    def saveEvents(self, event):
+        DataSource.EVENTS_SAVED += 1
+        if self.mock:
+            print event
+            return
+        else:
+            self.eventCollection.save({
+                "year": event.year,
+                "links": event.links,
+                "month" : event.month,
+                "day" : event.day,
+                "event_text" : event.eventText
+            })
 
 def processYear(page):
     """
@@ -197,7 +212,7 @@ def processYear(page):
             return False
 
     # Grab just the events section onwards
-    startIndex = page.text.find('Events')
+    startIndex = page.text.find('=Events')
     startIndex = startIndex if startIndex != -1 else 0
     lastEvent = None
     for line in page.text[startIndex:].splitlines():
@@ -214,11 +229,7 @@ def processYear(page):
                 lastEvent = Event(line, year)
                 page.events.append(lastEvent)
             except ValueError:
-                print "ERROR: %s" % line
-                errors += 1 # not fatal
-        else:
-            print "error: ", line
-    return errors
+                pass
 
 def processPageForCoords(page):
     page.coords = []
@@ -226,7 +237,7 @@ def processPageForCoords(page):
         try:
             page.coords.append(Coords(s))
         except (ValueError):
-            print "invalid coord %s" % s.encode('utf_8')
+            saveInvalidCoordPage(page, s)
 
 def processPage(page):
     """
@@ -235,17 +246,17 @@ def processPage(page):
     """
     if isYearPattern.match(page.title):
         processYear(page)
-        if page.events:
-            saveEvents(page)
+        for event in page.events:
+            dataSource.saveEvent(event)
     else:
         processPageForCoords(page)
         if page.coords:
-            savePage(page)
-
+            dataSource.savePage(page)
 
 if __name__ == "__main__":
-    """
-    When called as script, argv[1] is assumed to be a filename and we
-    simply print pages found.
-    """
+    dataSource = DataSource(mock=True)
     page_parser.parseWithCallback(sys.argv[1], processPage)
+    print
+    print "Done parsing: ", sys.argv[1]
+    outpus = (YEARS_PROCESSED, DataSource.EVENTS_SAVED, DataSource.COORD_PAGES, DataSource.INVALID_COORD_PAGES)
+    print "Years: %d; Events: %d; Pages with coords: %d; Invalid coords: %d" % outputs

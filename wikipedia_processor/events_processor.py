@@ -7,7 +7,6 @@ import pymongo
 import re
 import page_parser
 
-YEARS_PROCESSED = 0
 isYearPattern = re.compile(r"^\d{1,4}( BC)?$")
 coordsPattern = re.compile(r"\{\{[Cc]oord\|(.*?)\}\}")
 
@@ -44,12 +43,13 @@ class Coords(object):
 
     def _process(self, input, piece, gran):
         if Coords.points.has_key(piece):
-            input *= Coords.points[piece]
+            return input * Coords.points[piece]
+        elif gran > 2:
+            raise ValueError()
         elif piece.find('.') != -1:
-            input += float(piece) * Coords.granularities[gran]
+            return input + (float(piece) * Coords.granularities[gran])
         else:
-            input += int(piece) * Coords.granularities[gran]
-        return input
+            return input + (int(piece) * Coords.granularities[gran])
 
     def _padPieces(self, pieces, numPieces):
         divider = 0
@@ -150,11 +150,11 @@ class DataSource(object):
         self.mock = mock
         if not mock:
             connection = pymongo.Connection()
-            db = connection.time_place
-            self.eventCollection = db.events
-            self.eventCollection.ensure_index("year", direction=pymongo.ASCENDING)
-            self.pageCollection = db.pages
-            self.invalidCoordCollection = db.invalid_coords
+            self.db = connection.time_place
+            self.eventCollection = self.db.events
+            self.eventCollection.ensure_index([("year", pymongo.ASCENDING), ("month", pymongo.ASCENDING), ("day", pymongo.ASCENDING)])
+            self.pageCollection = self.db.pages
+            self.invalidCoordCollection = self.db.invalid_coords
 
     def saveInvalidCoordPage(self, page, coordStr):
         DataSource.INVALID_COORD_PAGES += 1
@@ -163,7 +163,7 @@ class DataSource(object):
         else:
             self.invalidCoordCollection.save({
                 "_id" : page.title,
-                "coord_string" : s
+                "coord_string" : coordStr
             })
 
     def savePage(self, page):
@@ -175,9 +175,8 @@ class DataSource(object):
             for coord in page.coords:
                 coords.append({"latitude": coord.lat, "longitude": coord.long})
             self.pageCollection.save({
-                "coords": coords,
-                "article_length": len(page.text),
-                "_id": page.title
+                "_id": page.title,
+                "coords": coords
             })
 
     def saveEvent(self, event):
@@ -254,9 +253,9 @@ def processPage(page):
             dataSource.savePage(page)
 
 if __name__ == "__main__":
-    dataSource = DataSource(mock=True)
+    dataSource = DataSource()
     page_parser.parseWithCallback(sys.argv[1], processPage)
     print
     print "Done parsing: ", sys.argv[1]
-    outputs = (YEARS_PROCESSED, DataSource.EVENTS_SAVED, DataSource.COORD_PAGES, DataSource.INVALID_COORD_PAGES)
-    print "Years: %d; Events: %d; Pages with coords: %d; Invalid coords: %d" % outputs
+    outputs = (DataSource.EVENTS_SAVED, DataSource.COORD_PAGES, DataSource.INVALID_COORD_PAGES)
+    print "Events: %d; Pages with coords: %d; Invalid coords: %d" % outputs

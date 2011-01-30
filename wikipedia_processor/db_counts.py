@@ -1,9 +1,8 @@
-import pymongo
-from pymongo import Connection
-connection = Connection()
-db = connection.time_place
-eventCollection = db.events
-pageCollection = db.pages
+from events_processor import DataSource
 
-print "Num events: %d" % eventCollection.count()
-print "Num pages: %d" % pageCollection.count()
+d = DataSource()
+
+print "counts:"
+print "pages: ", d.pageCollection.count()
+print "events: ", d.eventCollection.count()
+print "invalid coordinates: ", d.invalidCoordCollection.count()

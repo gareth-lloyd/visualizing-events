@@ -1,6 +1,5 @@
 package com.heychinaski.historyhack;
 
-import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.awt.image.RenderedImage;
 import java.io.File;
@@ -16,6 +15,7 @@ import com.heychinaski.historyhack.displayobjects.StatefulBlobFactoryImpl;
 import com.heychinaski.historyhack.model.GeoEventPage;
 import com.heychinaski.historyhack.provider.ConstantJsonGeoEventPageProvider;
 import com.heychinaski.historyhack.provider.GeoEventPageProvider;
+import com.heychinaski.historyhack.provider.JsonInputGEPProvider;
 import com.heychinaski.historyhack.renderer.BackDropFrameRenderer;
 import com.heychinaski.historyhack.renderer.CompositeFrameRenderer;
 import com.heychinaski.historyhack.renderer.FrameRenderer;
@@ -50,11 +50,11 @@ public class App {
         outputDirectory = properties.getProperty("outputDirectory", "./frames");
         long time = System.currentTimeMillis();
 
-        backDropRenderer = new BackDropFrameRenderer(width, height, backDrop);
-        provider = new ConstantJsonGeoEventPageProvider(inputLocation, 10);
+        backDropRenderer = new BackDropFrameRenderer(width, height, "/home/glloyd/projects/history_hackday/geo-vid-gen/target/backdrop.png");
+        provider = new JsonInputGEPProvider(inputLocation);
 
         eventRenderer = new GenerationalFrameRenderer(width, height, 
-                Color.decode(backgroundHex), new StatefulBlobFactoryImpl());
+                new StatefulBlobFactoryImpl());
         yearRenderer = new YearRenderer(width, height);
         compositeRenderer = new CompositeFrameRenderer(width, height);
 
@@ -73,7 +73,7 @@ public class App {
         }
         
         // pad ending
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 50; i++) {
             List<GeoEventPage> empty = Collections.emptyList();
             render(empty, currentFrame++);
         }
@@ -93,6 +93,7 @@ public class App {
         BufferedImage backDrop = backDropRenderer.getCurrentFrame();
         BufferedImage geoImage = eventRenderer.getCurrentFrame();
         BufferedImage yearImage = yearRenderer.getCurrentFrame();
+        overlays.add(backDrop);
         overlays.add(geoImage);
         overlays.add(yearImage);
         compositeRenderer.renderNextFrame(overlays);

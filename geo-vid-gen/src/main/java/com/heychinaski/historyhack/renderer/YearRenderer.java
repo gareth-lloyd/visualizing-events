@@ -27,14 +27,14 @@ public class YearRenderer implements FrameRenderer<Integer> {
         g2 = currentFrame.createGraphics();
         
         g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.2f));
-        g2.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 30));
+        g2.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 40));
         
         
         String yearString = "" + Math.abs(year);
         if(year < 0) {
             yearString += "BC";
         }
-        g2.drawString(yearString, currentFrame.getWidth() - 150, currentFrame.getHeight() - 30);
+        g2.drawString(yearString, currentFrame.getWidth() - 180, currentFrame.getHeight() - 40);
         
         g2.dispose();
     }

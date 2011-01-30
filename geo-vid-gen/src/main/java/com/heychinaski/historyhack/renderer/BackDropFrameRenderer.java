@@ -1,25 +1,33 @@
 package com.heychinaski.historyhack.renderer;
 
-import java.awt.Graphics2D;
-import java.awt.Image;
-import java.awt.Toolkit;
 import java.awt.image.BufferedImage;
+import java.awt.image.ColorConvertOp;
+import java.io.File;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+
+import javax.imageio.ImageIO;
 
 
 public class BackDropFrameRenderer implements FrameRenderer<Object> {
 
-    BufferedImage backDrop;
+    BufferedImage backdrop;
     
     public BackDropFrameRenderer(int width, int height, String backDropName) {
-        backDrop = new BufferedImage(width, height, BufferedImage.TYPE_3BYTE_BGR);
-        Graphics2D g2d = backDrop.createGraphics();
-        Image image = Toolkit.getDefaultToolkit().getImage(backDropName);
-        g2d.drawImage(image, 0, 0, null);
-        g2d.dispose();
+        try {
+            URL imageSrc = new File(backDropName).toURI().toURL();
+            backdrop = ImageIO.read(imageSrc);
+        } catch (MalformedURLException e) {
+            throw new RuntimeException("Bad image location: " + backDropName);
+        } catch (IOException e) {
+            throw new RuntimeException("Bad image location: " + backDropName);
+        }
+        
     }
 
     public BufferedImage getCurrentFrame() {
-        return backDrop;
+        return backdrop;
     }
 
     public void renderNextFrame(Object data) {

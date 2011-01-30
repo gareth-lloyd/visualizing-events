@@ -137,14 +137,14 @@ class Event(object):
                     except ValueError:
                         pass
     def __str__(self):
-        return "%d %s" % (self.year, self.eventText)
+        return "%d %s" % (self.year, self.eventText.encode("utf_8"))
     def __unicode__(self):
         return "%d %s" % (self.year, self.eventText)
 
 class DataSource(object):
-    INVALID_COORD_PAGES
-    COORD_PAGES
-    EVENTS_SAVED
+    INVALID_COORD_PAGES = 0
+    COORD_PAGES = 0
+    EVENTS_SAVED = 0
 
     def __init__(self, mock=False):
         self.mock = mock
@@ -180,7 +180,7 @@ class DataSource(object):
                 "_id": page.title
             })
 
-    def saveEvents(self, event):
+    def saveEvent(self, event):
         DataSource.EVENTS_SAVED += 1
         if self.mock:
             print event
@@ -237,7 +237,7 @@ def processPageForCoords(page):
         try:
             page.coords.append(Coords(s))
         except (ValueError):
-            saveInvalidCoordPage(page, s)
+            dataSource.saveInvalidCoordPage(page, s)
 
 def processPage(page):
     """
@@ -258,5 +258,5 @@ if __name__ == "__main__":
     page_parser.parseWithCallback(sys.argv[1], processPage)
     print
     print "Done parsing: ", sys.argv[1]
-    outpus = (YEARS_PROCESSED, DataSource.EVENTS_SAVED, DataSource.COORD_PAGES, DataSource.INVALID_COORD_PAGES)
+    outputs = (YEARS_PROCESSED, DataSource.EVENTS_SAVED, DataSource.COORD_PAGES, DataSource.INVALID_COORD_PAGES)
     print "Years: %d; Events: %d; Pages with coords: %d; Invalid coords: %d" % outputs

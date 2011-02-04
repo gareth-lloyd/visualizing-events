@@ -1,10 +1,11 @@
+import sys
 from pymongo import ASCENDING, DESCENDING
 from events_processor import DataSource
 d = DataSource()
 
 JSON_FMT = '{"title" : "%s", "latitude": %s, "longitude": %s, "year" : %s, "month": %s, "day": %s, "eventText": "%s"}'
 CSV_FMT = '"%s","%s %s","%s","%s","%s","%s"'
-fmt = JSON_FMT
+fmt = CSV_FMT
 
 # apply a bounding box to lats and longs
 MIN_LAT = -90
@@ -13,21 +14,13 @@ MIN_LONG = -180
 MAX_LONG = 180
 
 # drop and recreate the reference counts
-#d.db.drop_collection("ref_counts")
 refCountCollection = d.db.ref_counts
+if refCountCollection.count() == 0:
+    print "ERROR: collection ref_counts has not been populated"
+    sys.exit()
 
-## count references to pages
-#for event in d.eventCollection.find():
-#    for link in event['links']:
-#        p = d.pageCollection.find_one({"_id" : link})
-#        if p:
-#            ref = refCountCollection.find_one({"_id" : p["_id"]})
-#            if not ref:
-#                refCountCollection.insert({"_id" : p["_id"], "refs": 1})
-#            else:
-#                refCountCollection.update({'_id': p["_id"]}, {"$inc" : { "refs": 1 }})
-
-print refCountCollection.count()
+if fmt == CSV_FMT:
+    print '"title","location","year","month","day","event"'
 
 # output location-linked events. Prefer less-linked pages
 for event in d.eventCollection.find().sort([("year", ASCENDING), ("month", ASCENDING), ("day", ASCENDING)]):
@@ -40,7 +33,7 @@ for event in d.eventCollection.find().sort([("year", ASCENDING), ("month", ASCEN
             if ref["refs"] < leastRefs:
                 pageToLink = p
     if pageToLink:
-        eventText = event["event_text"].replace(',', '').encode('utf-8')
+        eventText = event["event_text"].replace('"', '').encode('utf-8')
         title = pageToLink["_id"].replace(',', '').encode('utf-8')
         coord = pageToLink["coords"][0]
         latitude, longitude = coord["latitude"], coord["longitude"]
